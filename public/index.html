@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Suno Bulk Downloader</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .glass {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+  </style>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen p-8 bg-gradient-to-br from-gray-900 to-gray-800">
+  
+  <div class="max-w-3xl mx-auto glass p-8 rounded-2xl shadow-xl border-gray-700">
+    <h1 class="text-3xl font-bold mb-2">Suno Bulk Downloader</h1>
+    <p class="text-gray-400 mb-8">Paste your Suno links and download them directly to a local folder.</p>
+
+    <form id="downloadForm" class="space-y-6">
+      <div>
+        <label class="block text-sm font-medium mb-2">Folder Name</label>
+        <input type="text" id="folderName" required placeholder="e.g., Liberty_Rockers_Vol1" class="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+      </div>
+
+      <div id="songsContainer" class="space-y-4">
+        <div class="song-entry flex gap-4">
+          <input type="text" placeholder="Filename (e.g., Track1.mp3)" required class="filename-input flex-1 bg-gray-800 border border-gray-700 rounded-lg p-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <input type="url" placeholder="Suno URL" required class="url-input flex-2 w-1/2 bg-gray-800 border border-gray-700 rounded-lg p-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <button type="button" class="remove-btn bg-red-500/20 text-red-500 hover:bg-red-500/30 px-4 rounded-lg transition-colors">X</button>
+        </div>
+      </div>
+
+      <div class="flex gap-4">
+        <button type="button" id="addSongBtn" class="bg-gray-700 hover:bg-gray-600 px-6 py-3 rounded-lg font-medium transition-colors">
+          + Add Another Song
+        </button>
+        <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-lg font-medium shadow-lg transition-colors">
+          Start Bulk Download
+        </button>
+      </div>
+    </form>
+
+    <div id="statusMessage" class="mt-6 hidden p-4 rounded-lg bg-green-500/20 text-green-400 border border-green-500/30">
+    </div>
+  </div>
+
+  <script>
+    const songsContainer = document.getElementById('songsContainer');
+    const addSongBtn = document.getElementById('addSongBtn');
+    const form = document.getElementById('downloadForm');
+    const statusMessage = document.getElementById('statusMessage');
+
+    const createSongEntry = () => {
+      const div = document.createElement('div');
+      div.className = 'song-entry flex gap-4';
+      div.innerHTML = `
+        <input type="text" placeholder="Filename (e.g., Track.mp3)" required class="filename-input flex-1 bg-gray-800 border border-gray-700 rounded-lg p-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <input type="url" placeholder="Suno URL" required class="url-input flex-2 w-1/2 bg-gray-800 border border-gray-700 rounded-lg p-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <button type="button" class="remove-btn bg-red-500/20 text-red-500 hover:bg-red-500/30 px-4 rounded-lg transition-colors">X</button>
+      `;
+      
+      div.querySelector('.remove-btn').addEventListener('click', () => {
+        if (document.querySelectorAll('.song-entry').length > 1) {
+          div.remove();
+        }
+      });
+      
+      return div;
+    };
+
+    document.querySelectorAll('.remove-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        if (document.querySelectorAll('.song-entry').length > 1) {
+          e.target.closest('.song-entry').remove();
+        }
+      });
+    });
+
+    addSongBtn.addEventListener('click', () => {
+      songsContainer.appendChild(createSongEntry());
+    });
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const folderName = document.getElementById('folderName').value;
+      const entries = document.querySelectorAll('.song-entry');
+      
+      const songs = Array.from(entries).map(entry => ({
+        filename: entry.querySelector('.filename-input').value.trim(),
+        url: entry.querySelector('.url-input').value.trim()
+      }));
+
+      try {
+        const response = await fetch('/api/bulk-download', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ folderName, songs })
+        });
+
+        const data = await response.json();
+        
+        statusMessage.textContent = data.message;
+        statusMessage.classList.remove('hidden');
+        statusMessage.classList.add('block');
+        
+        form.reset();
+        
+      } catch (error) {
+        statusMessage.textContent = 'Error starting download. Check console.';
+        statusMessage.classList.replace('bg-green-500/20', 'bg-red-500/20');
+        statusMessage.classList.replace('text-green-400', 'text-red-400');
+        statusMessage.classList.remove('hidden');
+      }
+    });
+  </script>
+</body>
+</html>
