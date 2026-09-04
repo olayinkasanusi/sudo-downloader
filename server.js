@@ -9,27 +9,26 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.static('public'));
 
-const getSunoDirectUrl = (sunoUrl) => {
+const extractSongId = (sunoUrl) => {
   try {
     const urlObj = new URL(sunoUrl);
     const pathParts = urlObj.pathname.split('/');
-    const songId = pathParts[pathParts.indexOf('song') + 1];
-    
-    if (!songId) return null;
-    
-    return `https://cdn1.suno.ai/${songId}.mp3`;
+    return pathParts[pathParts.indexOf('song') + 1] || null;
   } catch (err) {
     return null;
   }
 };
 
-const downloadSong = async (filename, url, targetDir) => {
-  const directUrl = getSunoDirectUrl(url);
+const downloadSong = async (url, targetDir) => {
+  const songId = extractSongId(url);
 
-  if (!directUrl) {
-    console.error(`Invalid Suno URL for ${filename}`);
+  if (!songId) {
+    console.error(`Invalid Suno URL: ${url}`);
     return;
   }
+
+  const directUrl = `https://cdn1.suno.ai/${songId}.mp3`;
+  const filename = `${songId}.mp3`;
 
   try {
     const response = await fetch(directUrl, {
@@ -75,9 +74,9 @@ app.post('/api/bulk-download', async (req, res) => {
 
   res.status(202).json({ message: `Download process started for folder: ${folderName}` });
 
-  for (const song of songs) {
-    if (song.filename && song.url) {
-      await downloadSong(song.filename, song.url, targetDir);
+  for (const url of songs) {
+    if (url) {
+      await downloadSong(url, targetDir);
     }
   }
   
